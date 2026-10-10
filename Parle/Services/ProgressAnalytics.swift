@@ -229,7 +229,9 @@ enum SoundDetector {
         if w.contains("ill") || hasVowelY(w) { found.insert("ill") }
         if w.contains("ou") || w.contains("où") || w.contains("oû") { found.insert("u") }
         if w.contains("eu") || w.contains("œu") { found.insert(w.range(of: #"(eu|œu)[rlfn]"#, options: .regularExpression) != nil ? "oe" : "eu") }
-        if w.contains("é") || w.contains("è") || w.contains("ê") || w.contains("ai") { found.insert("e") }
+        // "ai" sounds like è, except in the nasal "ain"/"aim" ("pain", "faim").
+        if w.contains("é") || w.contains("è") || w.contains("ê")
+            || w.range(of: #"ai([^nm]|$|[nm][aeiouyéè])"#, options: .regularExpression) != nil { found.insert("e") }
 
         // Nasal vowels: vowel + n/m not followed by a vowel or another n/m.
         if hasNasal(w, ["ain", "ein", "ien", "in", "im", "un", "um", "yn"]) { found.insert("in") }
@@ -272,9 +274,13 @@ enum SoundDetector {
                     return exRange.overlaps(range)
                 }) { continue }
                 // A preceding vowel means a different spelling ("ain", "oin") already handled.
-                if range.lowerBound > w.startIndex, pattern.count == 2,
-                   vowels.contains(w[w.index(before: range.lowerBound)]),
-                   !(w[w.index(before: range.lowerBound)] == "o" && pattern.hasPrefix("i")) { continue }
+                if range.lowerBound > w.startIndex, pattern.count == 2 {
+                    let before = w.index(before: range.lowerBound)
+                    let previous = w[before]
+                    // "oin" is nasal; the "u" in "qu"/"gu" is silent ("quand").
+                    let silentU = previous == "u" && before > w.startIndex && "qg".contains(w[w.index(before: before)])
+                    if vowels.contains(previous) && !(previous == "o" && pattern.hasPrefix("i")) && !silentU { continue }
+                }
                 if range.upperBound == w.endIndex { return true }
                 let next = w[range.upperBound]
                 if !vowels.contains(next) && next != "n" && next != "m" && next != "h" { return true }
