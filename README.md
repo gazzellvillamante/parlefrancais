@@ -20,7 +20,8 @@ no paywalls, no accounts and no analytics, and your data stays on your device.
 | **Review** | Automatically collects the phrases you scored under 80 |
 | **AI tutor** | Spoken role‑play conversations (café, directions, hotel…) with corrections. Runs free on‑device with Apple Intelligence, or with your own Claude API key |
 | **Level check** | An onboarding self‑assessment plus a 3‑phrase speaking test sets your path |
-| **Progress** | Streaks, daily goal, mastered phrases, a 14‑day score chart, attempt history |
+| **Progress › Overview** | Streak, average score, average gain from first try to best, this week vs last week, score and activity charts (14/30 days), a practice calendar, average by unit, best time of day, level progress, recent attempts |
+| **Progress › Improve** | Coach's notes in plain language, the French sounds you mispronounce most (linked to their drills), the words you miss most (tap to hear them, practise them as a set), and phrases still under 80 |
 | **Reminders** | Daily practice notification at a time you choose |
 
 ## Install it on your iPhone
