@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    paths:
+      - "Parle/**"
+      - "project.yml"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project Parle.xcodeproj -scheme Parle \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug build CODE_SIGNING_ALLOWED=NO | tail -n 80
+
+      - name: Build unsigned device app
+        run: |
+          set -o pipefail
+          xcodebuild -project Parle.xcodeproj -scheme Parle \
+            -destination 'generic/platform=iOS' -configuration Release \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build | tail -n 40
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Parle.app Payload/
+          zip -qr Parle-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Parle-unsigned-ipa
+          path: Parle-unsigned.ipa
+
+      - name: Upload Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: Parle-xcodeproj
+          path: Parle.xcodeproj
