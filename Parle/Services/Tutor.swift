@@ -191,16 +191,17 @@ final class TutorChat {
 // MARK: - Claude Messages API
 
 struct ClaudeClient {
-    static let defaultModel = "claude-opus-5-5"
+    /// Haiku is fast and inexpensive, and plenty for conversation practice.
+    static let defaultModel = "claude-haiku-5-5"
     struct Model: Identifiable {
         let id: String
         let name: String
     }
 
     static let models: [Model] = [
-        Model(id: "claude-opus-5-5", name: "Claude Opus 5.5"),
+        Model(id: "claude-haiku-5-5", name: "Claude Haiku 5.5 (cheapest)"),
         Model(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5"),
-        Model(id: "claude-haiku-5-5", name: "Claude Haiku 5.5"),
+        Model(id: "claude-opus-5-5", name: "Claude Opus 5.5 (smartest)"),
     ]
     /// Models that accept server-side refusal fallbacks.
     private static let fallbackModels: Set<String> = ["claude-opus-5-5", "claude-sonnet-5-5"]
