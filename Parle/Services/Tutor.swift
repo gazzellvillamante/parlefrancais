@@ -196,12 +196,32 @@ struct ClaudeClient {
     struct Model: Identifiable {
         let id: String
         let name: String
+        /// US dollars per million tokens (Anthropic list prices, Oct 2026).
+        let inputPrice: Double
+        let outputPrice: Double
+        /// Typical cost of one tutor reply in a short conversation.
+        let typicalMessageCost: String
+
+        func cost(inputTokens: Int, outputTokens: Int) -> Double {
+            (Double(inputTokens) * inputPrice + Double(outputTokens) * outputPrice) / 1_000_000
+        }
+    }
+
+    static func model(_ id: String) -> Model {
+        models.first { $0.id == id } ?? models[0]
+    }
+
+    static var selectedModel: Model {
+        model(UserDefaults.standard.string(forKey: "claudeModel") ?? defaultModel)
     }
 
     static let models: [Model] = [
-        Model(id: "claude-haiku-5-5", name: "Claude Haiku 5.5 (cheapest)"),
-        Model(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5"),
-        Model(id: "claude-opus-5-5", name: "Claude Opus 5.5 (smartest)"),
+        Model(id: "claude-haiku-5-5", name: "Claude Haiku 5.5 (cheapest)",
+              inputPrice: 0.10, outputPrice: 0.50, typicalMessageCost: "about $0.0002"),
+        Model(id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5",
+              inputPrice: 2, outputPrice: 10, typicalMessageCost: "about $0.004"),
+        Model(id: "claude-opus-5-5", name: "Claude Opus 5.5 (smartest)",
+              inputPrice: 4, outputPrice: 20, typicalMessageCost: "about $0.007"),
     ]
     /// Models that accept server-side refusal fallbacks.
     private static let fallbackModels: Set<String> = ["claude-opus-5-5", "claude-sonnet-5-5"]
@@ -214,8 +234,13 @@ struct ClaudeClient {
             let type: String
             let text: String?
         }
+        struct Usage: Decodable {
+            let input_tokens: Int
+            let output_tokens: Int
+        }
         let content: [Block]
         let stop_reason: String?
+        let usage: Usage?
     }
 
     private struct APIErrorBody: Decodable {
@@ -252,10 +277,59 @@ struct ClaudeClient {
         }
 
         let decoded = try JSONDecoder().decode(Response.self, from: data)
+        if let usage = decoded.usage {
+            // Every completed request is billed, even a refusal, so record it first.
+            SpendTracker.record(Self.model(model).cost(inputTokens: usage.input_tokens, outputTokens: usage.output_tokens))
+        }
         if decoded.stop_reason == "refusal" { throw TutorError.refused }
         let text = decoded.content.filter { $0.type == "text" }.compactMap(\.text).joined()
         guard !text.isEmpty else { throw TutorError.api("Claude returned an empty reply.") }
         return text
+    }
+}
+
+// MARK: - Spending
+
+/// Running estimate of Claude API spending this calendar month, worked out
+/// from the token counts Claude returns. The exact bill is in the Anthropic Console.
+enum SpendTracker {
+    private static let monthKey = "spendMonth"
+    private static let totalKey = "spendTotal"
+    private static let countKey = "spendMessages"
+
+    private static var currentMonth: String {
+        let parts = Calendar.current.dateComponents([.year, .month], from: .now)
+        return "\(parts.year ?? 0)-\(parts.month ?? 0)"
+    }
+
+    private static func resetIfNewMonth() {
+        let defaults = UserDefaults.standard
+        if defaults.string(forKey: monthKey) != currentMonth {
+            defaults.set(currentMonth, forKey: monthKey)
+            defaults.set(0.0, forKey: totalKey)
+            defaults.set(0, forKey: countKey)
+        }
+    }
+
+    static func record(_ cost: Double) {
+        resetIfNewMonth()
+        let defaults = UserDefaults.standard
+        defaults.set(defaults.double(forKey: totalKey) + cost, forKey: totalKey)
+        defaults.set(defaults.integer(forKey: countKey) + 1, forKey: countKey)
+    }
+
+    static var thisMonth: Double {
+        resetIfNewMonth()
+        return UserDefaults.standard.double(forKey: totalKey)
+    }
+
+    static var messagesThisMonth: Int {
+        resetIfNewMonth()
+        return UserDefaults.standard.integer(forKey: countKey)
+    }
+
+    static func format(_ dollars: Double) -> String {
+        dollars < 0.01 && dollars > 0 ? String(format: "$%.4f", dollars) : String(format: "$%.2f", dollars)
     }
 }
 

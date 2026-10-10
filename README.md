@@ -65,6 +65,19 @@ sizes (artifact `iphone-14-pro-screenshots`).
 
 Update the phone to iOS 17 or later (iOS 26 recommended) before installing.
 
+## What's free and what costs money
+
+Everything in Parle is free **except** the AI tutor when it uses a Claude API key.
+
+- **Before any charge:** Parle asks you to confirm before sending the first paid message of each
+  tutor conversation, showing the model and its typical cost per reply. Turn on *Settings › AI
+  tutor › Ask before every paid message* to confirm every single one. If you cancel, nothing is
+  sent and your words are kept in the text box.
+- **While chatting:** a "Paid" line above the input shows the model and your estimated spending
+  this month.
+- **Settings:** shows the same monthly estimate, worked out from the token counts Claude returns.
+  Your exact bill is on the Usage page at console.anthropic.com.
+
 ## Tips for the best results
 
 - **Better voice:** download an *Enhanced* or *Premium* French voice in iOS *Settings ›

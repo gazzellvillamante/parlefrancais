@@ -7,6 +7,11 @@ struct TutorView: View {
     @State private var backend = TutorChat.backend
     @AppStorage("level") private var levelRaw = 0
     @AppStorage("speakReplies") private var speakReplies = true
+    @AppStorage("confirmEveryPaidMessage") private var confirmEveryPaidMessage = false
+    /// A message waiting for the user to approve a paid Claude request.
+    @State private var pendingMessage: String?
+    /// Set once the user approves paid use for the current conversation.
+    @State private var paidApproved = false
 
     private var level: Level { Level(rawValue: levelRaw) ?? .beginner }
 
@@ -43,7 +48,40 @@ struct TutorView: View {
             .onDisappear {
                 recognizer.cancel()
             }
+            .alert("Use your Claude credit?",
+                   isPresented: Binding(get: { pendingMessage != nil }, set: { if !$0 { pendingMessage = nil } }),
+                   presenting: pendingMessage) { text in
+                Button("Send (paid)") {
+                    paidApproved = true
+                    Task { await chat.send(text) }
+                }
+                Button("Cancel", role: .cancel) {
+                    // Keep what the user said so nothing is lost.
+                    draft = text
+                }
+            } message: { _ in
+                let model = ClaudeClient.selectedModel
+                Text("""
+                The tutor will send this to \(model.name), paid from your Anthropic API credit — \(model.typicalMessageCost) per reply. \
+                Spent this month: \(SpendTracker.format(SpendTracker.thisMonth)) (estimate).
+
+                \(confirmEveryPaidMessage ? "You'll be asked before every message." : "You won't be asked again in this conversation.")
+                """)
+            }
         }
+    }
+
+    private var paidBanner: some View {
+        let model = ClaudeClient.selectedModel
+        return Label {
+            Text("Paid · \(model.name) · \(SpendTracker.format(SpendTracker.thisMonth)) this month")
+        } icon: {
+            Image(systemName: "creditcard")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
     }
 
     private var setupHelp: some View {
@@ -96,6 +134,7 @@ struct TutorView: View {
             }
 
             Divider()
+            if backend == .claude { paidBanner }
             inputBar
         }
     }
@@ -140,6 +179,7 @@ struct TutorView: View {
 
     private func begin(_ scenario: TutorScenario) {
         recognizer.cancel()
+        paidApproved = false
         chat.start(scenario, level: level)
         if speakReplies { Speaker.shared.speak(scenario.opener) }
     }
@@ -147,7 +187,18 @@ struct TutorView: View {
     private func sendDraft() {
         let text = draft
         draft = ""
-        Task { await chat.send(text) }
+        submit(text)
+    }
+
+    /// Sends a message, first asking for approval if it would use paid Claude credit.
+    private func submit(_ text: String) {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        backend = TutorChat.backend
+        if backend == .claude && (confirmEveryPaidMessage || !paidApproved) {
+            pendingMessage = text
+        } else {
+            Task { await chat.send(text) }
+        }
     }
 
     private func toggleMic() {
@@ -158,7 +209,7 @@ struct TutorView: View {
         Task {
             await recognizer.start { heard in
                 guard !heard.isEmpty else { return }
-                Task { await chat.send(heard) }
+                submit(heard)
             }
         }
     }

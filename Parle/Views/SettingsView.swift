@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("reminderMinute") private var reminderMinute = 0
     @AppStorage("preferClaude") private var preferClaude = false
     @AppStorage("claudeModel") private var claudeModel = ClaudeClient.defaultModel
+    @AppStorage("confirmEveryPaidMessage") private var confirmEveryPaidMessage = false
     @AppStorage("hasOnboarded") private var hasOnboarded = true
 
     @State private var apiKey = Keychain.read(Keychain.claudeKey) ?? ""
@@ -92,9 +93,12 @@ struct SettingsView: View {
                     if !apiKey.isEmpty {
                         Picker("Claude model", selection: $claudeModel) {
                             ForEach(ClaudeClient.models) { model in
-                                Text(model.name).tag(model.id)
+                                Text("\(model.name) · \(model.typicalMessageCost)/reply").tag(model.id)
                             }
                         }
+                        Toggle("Ask before every paid message", isOn: $confirmEveryPaidMessage)
+                        LabeledContent("Spent this month (estimate)",
+                                       value: "\(SpendTracker.format(SpendTracker.thisMonth)) · \(SpendTracker.messagesThisMonth) replies")
                         if TutorChat.onDeviceAvailable {
                             Toggle("Use Claude instead of on-device", isOn: $preferClaude)
                         }
@@ -103,7 +107,7 @@ struct SettingsView: View {
                 } header: {
                     Text("AI tutor")
                 } footer: {
-                    Text("The on-device tutor is free and private. A Claude key (from console.anthropic.com) is stored in your Keychain and billed per use by Anthropic — no subscription.")
+                    Text("The on-device tutor is free and private. A Claude key (from console.anthropic.com) is stored in your Keychain and billed per use by Anthropic — no subscription. Parle always asks before the first paid message of each conversation. Your exact bill is on the Usage page at console.anthropic.com.")
                 }
 
                 Section {
