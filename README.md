@@ -50,6 +50,21 @@ In Xcode:
 uploads an **unsigned `.ipa`** artifact, which you can sign and install with a sideloading tool
 such as Sideloadly or AltStore using your Apple ID.
 
+## iPhone 14 Pro
+
+Parle runs on the iPhone 14 Pro (and any iPhone on iOS 17 or later). The CI workflow installs it
+on an **iPhone 14 Pro simulator** and screenshots every screen at normal and accessibility text
+sizes (artifact `iphone-14-pro-screenshots`).
+
+| Feature | iPhone 14 Pro |
+|---|---|
+| Speaking practice, scoring, Sounds, Progress, reminders | ✅ Fully supported (on‑device French recognition) |
+| Natural voices | ✅ Download an Enhanced/Premium French voice in iOS Settings |
+| AI tutor — Apple Intelligence | ❌ Apple Intelligence needs an iPhone 15 Pro or newer |
+| AI tutor — Claude | ✅ Add your own API key in Settings › AI tutor (pay per use) |
+
+Update the phone to iOS 17 or later (iOS 26 recommended) before installing.
+
 ## Tips for the best results
 
 - **Better voice:** download an *Enhanced* or *Premium* French voice in iOS *Settings ›

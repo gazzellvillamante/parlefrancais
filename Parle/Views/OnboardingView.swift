@@ -9,7 +9,8 @@ struct OnboardingView: View {
     @AppStorage("reminderHour") private var reminderHour = 19
     @AppStorage("reminderMinute") private var reminderMinute = 0
 
-    @State private var step = 0
+    // "-onboardingStep N" on launch opens a given page (used for screenshots).
+    @State private var step = UserDefaults.standard.integer(forKey: "onboardingStep")
     @State private var selfLevel: Level = .beginner
     @State private var reminderTime = Calendar.current.date(from: DateComponents(hour: 19, minute: 0)) ?? .now
 
@@ -30,8 +31,7 @@ struct OnboardingView: View {
     }
 
     private var welcome: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        OnboardingPage {
             Text("🇫🇷").font(.system(size: 90))
             Text("Parle").font(.system(size: 48, weight: .bold, design: .rounded))
             Text("Your French pronunciation coach.\nListen, speak, and get instant feedback.")
@@ -45,16 +45,16 @@ struct OnboardingView: View {
                 Label("Chat with an AI tutor out loud", systemImage: "sparkles")
             }
             .padding(.top)
-            Spacer()
+        } footer: {
             primaryButton("Commencer") { step = 1 }
         }
     }
 
     private var levelPicker: some View {
-        VStack(spacing: 18) {
+        OnboardingPage {
             Text("How's your French?")
                 .font(.largeTitle.bold())
-                .padding(.top, 40)
+                .multilineTextAlignment(.center)
             ForEach(Level.allCases) { level in
                 Button {
                     selfLevel = level
@@ -74,25 +74,24 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Spacer()
+        } footer: {
             primaryButton("Continue") { step = 2 }
         }
     }
 
     private var reminder: some View {
-        VStack(spacing: 22) {
-            Spacer()
+        OnboardingPage {
             Image(systemName: "bell.badge")
                 .font(.system(size: 64))
                 .foregroundStyle(Color.accentColor)
-            Text("A little every day").font(.largeTitle.bold())
+            Text("A little every day").font(.largeTitle.bold()).multilineTextAlignment(.center)
             Text("Five minutes of speaking a day beats an hour once a week. When should we remind you?")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             DatePicker("Reminder time", selection: $reminderTime, displayedComponents: .hourAndMinute)
                 .datePickerStyle(.wheel)
                 .labelsHidden()
-            Spacer()
+        } footer: {
             primaryButton("Remind me") {
                 let parts = Calendar.current.dateComponents([.hour, .minute], from: reminderTime)
                 reminderHour = parts.hour ?? 19
@@ -116,6 +115,30 @@ struct OnboardingView: View {
     }
 }
 
+/// Centres its content when it fits; scrolls it (e.g. with large text) when
+/// it doesn't. The footer buttons always stay visible.
+private struct OnboardingPage<Content: View, Footer: View>: View {
+    @ViewBuilder let content: Content
+    @ViewBuilder let footer: Footer
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ViewThatFits(in: .vertical) {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 0)
+                    content
+                    Spacer(minLength: 0)
+                }
+                ScrollView {
+                    VStack(spacing: 22) { content }
+                        .padding(.vertical)
+                }
+            }
+            footer
+        }
+    }
+}
+
 /// Three phrases of increasing difficulty to suggest a starting level.
 private struct PlacementCheck: View {
     let selfLevel: Level
@@ -130,10 +153,11 @@ private struct PlacementCheck: View {
     private let phrases = PhraseLibrary.placementPhrases
 
     var body: some View {
-        VStack(spacing: 22) {
-            Text("Quick level check").font(.largeTitle.bold()).padding(.top, 40)
+        OnboardingPage {
+            Text("Quick level check").font(.largeTitle.bold()).multilineTextAlignment(.center)
             Text("Say each phrase out loud. It takes 30 seconds.")
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             if index < phrases.count {
                 let phrase = phrases[index]
@@ -142,7 +166,7 @@ private struct PlacementCheck: View {
                     Text(phrase.french)
                         .font(.title.weight(.semibold))
                         .multilineTextAlignment(.center)
-                    Text(phrase.english).foregroundStyle(.secondary)
+                    Text(phrase.english).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     HStack(spacing: 24) {
                         SpeakButton(text: phrase.french)
                         SpeakButton(text: phrase.french, slow: true)
@@ -162,15 +186,16 @@ private struct PlacementCheck: View {
                 if let error = recognizer.errorMessage {
                     Text(error).font(.footnote).foregroundStyle(.orange).multilineTextAlignment(.center)
                 }
-
-                Spacer()
+            }
+        } footer: {
+            if index < phrases.count {
                 Text(recognizer.isRecording ? (recognizer.transcript.isEmpty ? "Listening…" : recognizer.transcript) : " ")
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
                 MicButton(isRecording: recognizer.isRecording, level: recognizer.audioLevel) {
-                    record(phrase)
+                    record(phrases[index])
                 }
             }
-
             Button("Skip — use \(selfLevel.title)") {
                 recognizer.cancel()
                 onDone(selfLevel)

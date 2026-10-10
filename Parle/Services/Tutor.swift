@@ -90,6 +90,10 @@ final class TutorChat {
     @ObservationIgnored private var onDeviceSession: AnyObject?
 
     static var onDeviceAvailable: Bool {
+        #if DEBUG
+        // Mimics devices without Apple Intelligence, e.g. iPhone 14 Pro.
+        if UserDefaults.standard.bool(forKey: "simulateNoAppleIntelligence") { return false }
+        #endif
         #if canImport(FoundationModels)
         if #available(iOS 26.0, *) {
             if case .available = SystemLanguageModel.default.availability { return true }

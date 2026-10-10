@@ -55,10 +55,17 @@ jobs:
           shot 06-progress-overview -hasOnboarded YES -startTab 3
           shot 07-progress-improve -hasOnboarded YES -startTab 3 -progressPage Improve
           shot 08-settings -hasOnboarded YES -startTab 4
+          shot 08b-tutor-no-apple-intelligence -hasOnboarded YES -startTab 2 -simulateNoAppleIntelligence YES
+          shot 08c-onboarding-level -hasOnboarded NO -onboardingStep 1
+          shot 08d-onboarding-check -hasOnboarded NO -onboardingStep 2
+          shot 08e-onboarding-reminder -hasOnboarded NO -onboardingStep 3
           xcrun simctl ui "$UDID" content_size accessibility-large
           shot 09-large-text-learn -hasOnboarded YES -startTab 0
           shot 10-large-text-practice -hasOnboarded YES -openUnit cafe -autoPlay NO
           shot 11-large-text-onboarding -hasOnboarded NO
+          shot 12-large-text-level -hasOnboarded NO -onboardingStep 1
+          shot 13-large-text-check -hasOnboarded NO -onboardingStep 2
+          shot 14-large-text-improve -hasOnboarded YES -startTab 3 -progressPage Improve
           ls -la screenshots
 
       - name: Upload screenshots
