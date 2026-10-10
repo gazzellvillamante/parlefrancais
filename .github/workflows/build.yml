@@ -25,8 +25,47 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project Parle.xcodeproj -scheme Parle \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build-sim \
             -configuration Debug build CODE_SIGNING_ALLOWED=NO | tail -n 80
+
+      - name: Screenshots on iPhone 14 Pro simulator
+        run: |
+          set -euo pipefail
+          RUNTIME=$(xcrun simctl list runtimes -j | python3 -c "import json,sys; r=[x for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS' and x['isAvailable']]; print(r[-1]['identifier'])")
+          echo "Runtime: $RUNTIME"
+          UDID=$(xcrun simctl create "iPhone 14 Pro" com.apple.CoreSimulator.SimDeviceType.iPhone-14-Pro "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$UDID" build-sim/Build/Products/Debug-iphonesimulator/Parle.app
+          APP=com.personal.parlefrancais
+          mkdir -p screenshots
+          shot() {
+            name=$1; shift
+            xcrun simctl terminate "$UDID" $APP 2>/dev/null || true
+            xcrun simctl launch "$UDID" $APP "$@" > /dev/null
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "screenshots/$name.png"
+          }
+          shot 01-onboarding -hasOnboarded NO
+          shot 02-learn -hasOnboarded YES -seedDemoData YES -startTab 0
+          shot 03-practice -hasOnboarded YES -openUnit greetings -autoPlay NO
+          shot 04-sounds -hasOnboarded YES -startTab 1
+          shot 05-tutor -hasOnboarded YES -startTab 2
+          shot 06-progress-overview -hasOnboarded YES -startTab 3
+          shot 07-progress-improve -hasOnboarded YES -startTab 3 -progressPage Improve
+          shot 08-settings -hasOnboarded YES -startTab 4
+          xcrun simctl ui "$UDID" content_size accessibility-large
+          shot 09-large-text-learn -hasOnboarded YES -startTab 0
+          shot 10-large-text-practice -hasOnboarded YES -openUnit cafe -autoPlay NO
+          shot 11-large-text-onboarding -hasOnboarded NO
+          ls -la screenshots
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone-14-pro-screenshots
+          path: screenshots
 
       - name: Build unsigned device app
         run: |

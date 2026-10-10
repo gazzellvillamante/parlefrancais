@@ -10,7 +10,8 @@ struct StatsView: View {
     }
 
     @Query(sort: \Attempt.date, order: .reverse) private var attempts: [Attempt]
-    @State private var page = Page.overview
+    // "-progressPage Improve" on launch opens the Improve page (used for screenshots).
+    @State private var page = Page(rawValue: UserDefaults.standard.string(forKey: "progressPage") ?? "") ?? .overview
     @State private var analytics: ProgressAnalytics?
 
     var body: some View {
